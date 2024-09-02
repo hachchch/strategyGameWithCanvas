@@ -1,3 +1,5 @@
+const playerName=document.getElementById("playerName");
+var chat="";
 const canvas = document.querySelector(".canvas");
 const ctx = canvas.getContext("2d");
 const mouse = {x: null,y: null}
@@ -571,6 +573,9 @@ function construction(name,type,str,status,cultureCost){
             u.b={type,str,status,owner};
             u.status="建設中";
             u.color="#bbbbbb";
+                if(connection!=""){
+                connection.send("送信:タイル"+u.assign+"でプレイヤー"+u.owner+"の"+u.name+"が"+u.str+"を建設中");
+                    }
                 }
         }
     }
@@ -858,4 +863,37 @@ function cheat12(lv){
     culture=[1000,1000];
     level=[lv,lv];
     parts=[1000,1000];
+}
+var connection="";
+function websocketConnection(url){
+connection = new WebSocket(url);
+document.querySelector(".local").innerHTML=`
+<input type="text" id="chatmsg" /><input type="button" value="送信" onclick="sendChatmsg()" /><br>
+<t id="chat"></t>
+`;
+chatmsg=document.getElementById("chatmsg");
+//document.getElementById("webs").disabled=true;
+//document.getElementById("serverUrl").disabled=true;
+//playerName.disabled=true;
+connection.addEventListener('open',function(e){
+    connection.send(playerName.value+'から新しい接続があります！');
+});
+connection.addEventListener("message", (event) => {
+  //console.log("実況:", event.data);
+    console.log(event.data);
+    if(event.data.indexOf("送信:")==0){
+        document.getElementById("chat").innerHTML=event.data.replace("送信:","")+"<br>"+document.getElementById("chat").innerHTML;
+        }
+    });
+}
+document.addEventListener('DOMContentLoaded',function(e){
+            document.getElementById('next').addEventListener('click',function(e){
+                if(connection!=""){
+                connection.send('ターン'+Math.floor((turn+1)/2)+"プレイヤー"+P);
+                    }
+    });
+});
+function sendChatmsg(){
+    connection.send("送信:"+playerName.value+":"+chatmsg.value);
+    chatmsg.value="";
 }
