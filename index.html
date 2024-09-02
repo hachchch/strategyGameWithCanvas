@@ -200,11 +200,16 @@
         </script>
         <canvas class="canvas" width="1500" height="550"></canvas>
         <hr>
-        <input type="button" value="次のターン" onclick="nextTurn()" /><br>
+        <input type="button" id="next" value="次のターン" onclick="nextTurn()" /><br>
         資源<br>
         <t class="t0"></t><br>食料:<t class="t1"></t>,物資:<t class="t2"></t>,文化:<t class="t3"></t><t class="t4"></t>
         <hr>
         <t id="information"></t>
+        <hr>
+        <div class="local">
+        <input type="text" id="playerName"><br>
+        <input type="text" id="serverUrl" value="ws://localhost:8000/" /><input type="button" value="接続" onclick="websocketConnection(document.getElementById('serverUrl').value)" id="webs" />
+        </div>
         <script type="text/javascript" src="main.js"></script>
     </body>
 </html>
