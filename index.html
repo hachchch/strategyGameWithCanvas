@@ -198,7 +198,8 @@
                 document.getElementById("heal").play();
                 }
         </script>
-        <canvas class="canvas" width="1500" height="550"></canvas>
+        <canvas class="canvas" width="1500" height="650"></canvas><br>
+        <t id="description"></t>
         <hr>
         <input type="button" id="next" value="次のターン" onclick="nextTurn()" /><br>
         資源<br>
@@ -208,8 +209,9 @@
         <hr>
         <div class="local">
         <input type="text" id="playerName"><br>
-        <input type="text" id="serverUrl" value="ws://localhost:8000/" /><input type="button" value="接続" onclick="websocketConnection(document.getElementById('serverUrl').value)" id="webs" />
+        <input type="text" id="serverUrl" value="" /><input type="button" value="接続" onclick="websocketConnection(document.getElementById('serverUrl').value)" id="webs" />
         </div>
+        <script type="text/javascript" src="./../../lib/hachchchctx.lib.js"></script>
         <script type="text/javascript" src="main.js"></script>
     </body>
 </html>
