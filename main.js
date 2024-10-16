@@ -1,11 +1,35 @@
 const h=new hachchchctx();
+var editar=false;
+var buildMode=4;
+var newGame=true;
+/*画像読み込み*/
+const imgWarrior=new Image();
+imgWarrior.src="./Images/戦士.png";
+const imgPike=new Image();
+imgPike.src="./Images/長槍兵.png";
+const imgLineInfantry=new Image();
+imgLineInfantry.src="./Images/戦列歩兵.png";
+const imgInfantry=new Image();
+imgInfantry.src="./Images/歩兵.png";
+const imgMotorizedInfantry=new Image();
+imgMotorizedInfantry.src="./Images/自動車化歩兵.png";
+const imgHowitzer=new Image();
+imgHowitzer.src="./Images/榴弾砲.png";
+const imgSpecial=new Image();
+imgSpecial.src="./Images/特殊部隊.png";
+const imgModernTank=new Image();
+imgModernTank.src="./Images/主力戦車.png";
 const playerName=document.getElementById("playerName");
 var chat="";
 const canvas = document.querySelector(".canvas");
 const ctx = canvas.getContext("2d");
+let query="";
+const dataSet=document.getElementById("dataSet");
 const mouse = {x: null,y: null};
 const buttons=[];
 var techList=[];
+var localGame=false;
+var worldName="テイア";
 var techs=[];
 var tiles=[];
 var units=[];
@@ -55,11 +79,13 @@ planets.push({
 });
 }
 //heightは100pxの余白分追加される。
-var displayMode="ワールドマップ";//備考 技術ツリー、宗教ツリー、宇宙空間
+var displayMode="スタート前";//備考 技術ツリー、宗教ツリー、宇宙空間
 var buildings=[];
 var popTexts=[];
+var particles=[];
 var science=[4,4];
 var food=[5,5];
+let frames=0;
 var foodPt=[1,1];
 var basicResources=[2,2];
 var bRPt=[1,1];
@@ -85,7 +111,12 @@ makeTile(p.name);
 p.tiles=tiles.length-prod;
 prod=tiles.length;
 }
-
+for(let k=0; k<100; ++k){
+    particles.push({
+        x:Math.random()*canvas.width,
+        y:Math.random()*canvas.height-100
+    });
+}
 buttons.push({
     label:"技術ツリー",
     display:"ワールドマップ",
@@ -93,6 +124,16 @@ buttons.push({
     interval:-1,
     x:10,
     y:canvas.height-90,
+    w:150,
+    h:80
+});
+buttons.push({
+    label:"ゲーム開始！",
+    display:"スタート前",
+    status:"待機",
+    interval:-1,
+    x:canvas.width/2-75,
+    y:canvas.height/2-200,
     w:150,
     h:80
 });
@@ -142,6 +183,76 @@ buttons.push({
     status:"待機",
     interval:-1,
     x:170,
+    y:canvas.height-90,
+    w:150,
+    h:80
+});
+buttons.push({
+    label:"ユニットモード",
+    display:"エディタ",
+    status:"待機",
+    interval:-1,
+    x:330,
+    y:canvas.height-90,
+    w:150,
+    h:80
+});
+buttons.push({
+    label:"ビルドモード",
+    display:"エディタ",
+    status:"待機",
+    interval:-1,
+    x:490,
+    y:canvas.height-90,
+    w:150,
+    h:80
+});
+buttons.push({
+    label:"強化モード",
+    display:"エディタ",
+    status:"待機",
+    interval:-1,
+    x:650,
+    y:canvas.height-90,
+    w:150,
+    h:80
+});
+buttons.push({
+    label:"地形モード",
+    display:"エディタ",
+    status:"待機",
+    interval:-1,
+    x:810,
+    y:canvas.height-90,
+    w:150,
+    h:80
+});
+buttons.push({
+    label:"首都変更",
+    display:"エディタ",
+    status:"待機",
+    interval:-1,
+    x:970,
+    y:canvas.height-90,
+    w:150,
+    h:80
+});
+buttons.push({
+    label:"削除モード",
+    display:"エディタ",
+    status:"待機",
+    interval:-1,
+    x:1130,
+    y:canvas.height-90,
+    w:150,
+    h:80
+});
+buttons.push({
+    label:"プレイヤー変更",
+    display:"エディタ",
+    status:"待機",
+    interval:-1,
+    x:1290,
     y:canvas.height-90,
     w:150,
     h:80
@@ -234,7 +345,7 @@ techList.push({
 techList.push({
     name:"蒸気機関",
     require:190,
-    description:"工場が作れるようになる。"
+    description:"工場が作れるようになる。労働者の移動力が+1"
 });
 techList.push({
     name:"電子工学",
@@ -274,7 +385,7 @@ techList.push({
 techList.push({
     name:"エンジン",
     require:300,
-    description:"自動車化歩兵、歩兵戦車が作れるようになる。労働者の移動力が+1。首都レベル5のアップグレードに必要"
+    description:"自動車化歩兵、歩兵戦車が作れるようになる。首都レベル5のアップグレードに必要"
 });
 techList.push({
     name:"情報通信",
@@ -425,11 +536,13 @@ function hasTech(techName){
     }
 }
 function translate(){
-    if(buildings.findIndex((elem)=>elem.name=="クレムリン" && elem.owner==P)!=-1){
+    frames++;
+    if(buildings.findIndex((elem)=>elem.name=="アルテミス神殿" && elem.owner==P)!=-1){
     science[P]=culturePt[P]*3;
     }else{
     science[P]=culturePt[P]*2;
     }
+    if(displayMode!="スタート前"){
     document.querySelector(".t0").innerHTML="ターン"+Math.floor((turn+1)/2)+",プレイヤー"+P+",科学力"+science[P];
     document.querySelector(".t1").innerHTML=food[P]+"(+"+foodPt[P]+")";
     document.querySelector(".t2").innerHTML=basicResources[P]+"(+"+bRPt[P]+")";
@@ -438,6 +551,7 @@ function translate(){
     document.querySelector(".t4").innerHTML="部品:"+parts[P]+"(+"+partsPt[P]+")";
         }else{
         document.querySelector(".t4").innerHTML="";
+        }
         }
     if(displayMode=="ワールドマップ"){
     ctx.fillStyle="#8FCCFD";
@@ -460,11 +574,36 @@ function translate(){
     ctx.closePath();
     ctx.fillStyle="#ffffff";
     ctx.fillRect(0,canvas.height-100,canvas.width,canvas.height);
+    if(displayMode=="スタート前" || displayMode=="宇宙空間"){
+        ctx.fillStyle="#ffffff";
+        if(displayMode=="スタート前"){
+            let index=planets.findIndex((e)=>e.name=="テイア");
+            ctx.beginPath();
+            if(index!=-1){
+            ctx.arc(canvas.width/2-150,(canvas.height-100)/2-110+20*Math.cos(frames/40),planets[index].radius,0,Math.PI*2);
+            ctx.fill();
+                }
+            ctx.closePath();
+            ctx.fillText(worldName,canvas.width/2-150,(canvas.height-100)/2-140+20*Math.cos(frames/40));
+        }
+        for(const p of particles){
+            ctx.fillRect(p.x-2,p.y-2,4,4);
+            p.x-=2;
+            p.y+=2;
+            if(p.x<0){
+                p.x=canvas.width;
+            }
+            if(p.y>canvas.height-100){
+                p.y=0;
+            }
+        }
+        ctx.fillStyle="#000000";
+    }
     if(displayMode=="ワールドマップ"){
     ctx.fillStyle="#000000";
-    selectedTile=-1;
         /*タイル系*/
     for(const t of tiles){
+    ctx.strokeStyle="#000000";
         if(t.planet==mapPlanet[P]){
     ctx.beginPath();
     ctx.moveTo(t.hexX,t.hexY);
@@ -485,8 +624,10 @@ function translate(){
     ctx.closePath();
 
     ctx.beginPath();
-    if(Math.abs(t.centroid.x-mouse.x)<45 && Math.abs(t.centroid.y-mouse.y)<52){
+    if((Math.abs(t.centroid.x-mouse.x)<45 && Math.abs(t.centroid.y-mouse.y)<52) || (editar===true && t.id==selectedTile)){
+        if(editar===false){
     selectedTile=t.id;
+        }
     let tHexX=t.centroid.x+27.5;
     let tHexY=t.centroid.y-55*Math.sin(2*Math.PI/3);
     ctx.moveTo(tHexX,tHexY);
@@ -496,6 +637,15 @@ function translate(){
     ctx.lineTo(tHexX,tHexY);
     }
         }
+    if(units.findIndex((e)=>e.owner!=P && e.assign==t.id)!=-1){
+    ctx.strokeStyle="#ff0000";
+    }else if((units.findIndex((e)=>e.status=="選択中" && e.assign==t.id)!=-1) || (editar===true && t.id==selectedTile)){
+    ctx.strokeStyle="#0000ff";
+    }else if(units.findIndex((e)=>e.status=="行動終了" && e.assign==t.id)!=-1){
+    ctx.strokeStyle="#bbbbbb";
+    }else{
+    ctx.strokeStyle="#000000";
+    }
     ctx.stroke();
     ctx.closePath();
     }
@@ -505,6 +655,48 @@ function translate(){
     ctx.beginPath();
     /*ボタン系*/
     for(const b of buttons){
+        if(b.display=="エディタ"){
+            if(editar===true){
+                ctx.fillStyle="#ffffff";
+        ctx.fillRect(b.x,b.y,b.w,b.h);
+        if(b.status=="待機"){
+        ctx.strokeStyle="#000000";
+            }else{
+            ctx.strokeStyle="#003a76";
+            }
+        ctx.strokeRect(b.x,b.y,b.w,b.h);
+        ctx.fillStyle="#000000";
+        ctx.fillText(b.label,b.x+b.w/2,b.y+b.h/2);
+        if(b.interval>0){
+            //console.log(b.interval);
+            }else if(b.interval==0){
+                if(b.label=="ユニットモード"){
+                    buildMode=0;
+                }
+                if(b.label=="ビルドモード"){
+                    buildMode=1;
+                }
+                if(b.label=="強化モード"){
+                    buildMode=2;
+                }
+                if(b.label=="地形モード"){
+                    buildMode=4;
+                }
+            if(b.label=="首都変更"){
+                    buildMode=5;
+                }
+            if(b.label=="削除モード"){
+                    buildMode=3;
+                }
+            if(b.label=="プレイヤー変更"){
+                    P++;
+                if(P>=players.length){
+                    P=0;
+                    }
+                }
+            }
+                }
+            }
         if(displayMode==b.display){
         if(b.label!="宇宙空間" || buildings.findIndex((e)=>e.owner==P && e.name=="宇宙基地")!=-1){
         ctx.fillStyle="#ffffff";
@@ -516,7 +708,13 @@ function translate(){
             }
         ctx.strokeRect(b.x,b.y,b.w,b.h);
         ctx.fillStyle="#000000";
-        ctx.fillText(b.label,b.x+b.w/2,b.y+b.h/2);
+            if(b.label=="技術ツリー" && techs.findIndex((e)=>e.status2=="選択中" && e.assign==P)!=-1){
+                let index=techs.findIndex((e)=>e.status2=="選択中" && e.assign==P);
+                ctx.fillText(`${techs[index].name}`,b.x+b.w/2,b.y+b.h/2-11);
+                ctx.fillText(`${techs[index].progress}/${techs[index].require}`,b.x+b.w/2,b.y+b.h/2+11);
+                }else{
+                ctx.fillText(b.label,b.x+b.w/2,b.y+b.h/2);
+                }
             }
         }
         if(b.interval>0){
@@ -530,6 +728,41 @@ function translate(){
             }
             if(b.label=="宇宙空間"){
                 displayMode="宇宙空間";
+            }
+            if(b.label=="ゲーム開始！"){
+                if(newGame===true){
+                let era=document.querySelector("#eras").value;
+                if(era=="石器時代"){
+                    startLevel(1);
+                }
+                if(era=="古代"){
+                    startLevel(2);
+                }
+                if(era=="中世"){
+                    startLevel(3);
+                }
+                if(era=="産業時代"){
+                    startLevel(4);
+                }
+                if(era=="情報化時代"){
+                    startLevel(5);
+                }
+                if(era=="未来"){
+                    startLevel(6);
+                }
+                    }
+                document.querySelector("#control").innerHTML=`
+                <input type="button" id="next" value="次のターン" onclick="nextTurn()" /><br>
+        資源<br>
+        <t class="t0"></t><br>食料:<t class="t1"></t>,物資:<t class="t2"></t>,文化:<t class="t3"></t><t class="t4"></t>`;
+                displayMode="ワールドマップ";
+                document.addEventListener('DOMContentLoaded',function(e){
+            document.getElementById('next').addEventListener('click',function(e){
+                if(connection!=""){
+                connection.send('ターン'+Math.floor((turn+1)/2)+"プレイヤー"+P);
+                    }
+    });
+});
             }
             b.status="待機";
             b.interval=-1;
@@ -573,7 +806,9 @@ function translate(){
         let rad=Math.atan2(tiles[u.assign].centroid.y-u.y,tiles[u.assign].centroid.x-u.x);
         u.x=u.x+u.mp*Math.cos(rad);
         u.y=u.y+u.mp*Math.sin(rad);
-        if(Math.abs(u.x-tiles[u.assign].centroid.x)<2 && Math.abs(u.y-tiles[u.assign].centroid.y)<2){
+        if(Math.abs(u.x-tiles[u.assign].centroid.x)<u.mp+2 && Math.abs(u.y-tiles[u.assign].centroid.y)<u.mp+2){
+            u.x=tiles[u.assign].centroid.x;
+            u.y=tiles[u.assign].centroid.y;
             if(u.move<=0){
             u.status="行動終了";
             u.color="#cccccc";
@@ -602,7 +837,10 @@ function translate(){
                     popTexts.push({value:"-"+damageEnemy,x:u.x,y:u.y-25,interval:0,color:"#ff0000"});
                         }
                     if(units[enemy].type=="⚒"){
-                        deleteObject("units",units[enemy].assign);
+                        units[enemy].hp=units[enemy].hp-Math.ceil(Math.random()*30+20);
+                        if(units[enemy].hp<0){
+                            units[enemy].hp=0;
+                        }
                         }else{
                         let damage=Math.ceil(25*(power/powerEnemy));
                         units[enemy].hp=units[enemy].hp-damage;
@@ -671,19 +909,56 @@ function translate(){
     }
     ctx.strokeStyle=u.color;
     ctx.beginPath();
+    if(u.name=="戦士"){
+    ctx.drawImage(imgWarrior,u.x-40,u.y-40,80,80);
+    }
+            if(u.name=="長槍兵"){
+    ctx.drawImage(imgPike,u.x-40,u.y-40,80,80);
+    }
+            if(u.name=="戦列歩兵"){
+    ctx.drawImage(imgLineInfantry,u.x-40,u.y-40,80,80);
+    }
+            if(u.name=="歩兵"){
+    ctx.drawImage(imgInfantry,u.x-40,u.y-40,80,80);
+    }
+            if(u.name=="自動車化歩兵"){
+    ctx.drawImage(imgMotorizedInfantry,u.x-40,u.y-40,80,80);
+    }
+            if(u.name=="榴弾砲"){
+    ctx.drawImage(imgHowitzer,u.x-40,u.y-40,80,80);
+    }
+            if(u.name=="特殊部隊"){
+    ctx.drawImage(imgSpecial,u.x-40,u.y-40,80,80);
+    }
+            if(u.name=="主力戦車"){
+    ctx.drawImage(imgModernTank,u.x-40,u.y-40,80,80);
+    }
     ctx.arc(u.x,u.y,10,0,2*Math.PI);
     if(popTexts.findIndex((elem)=>u.x==elem.x && elem.y-u.y<=0 && elem.y-u.y>=-52)!=-1){
     ctx.fillStyle=popTexts[popTexts.findIndex((elem)=>u.x==elem.x && elem.y-u.y<=0 && elem.y-u.y>=-52)].color;
     ctx.fill();
     }
-    ctx.fillStyle="#000000";
+        ctx.fillStyle="#000000";
     ctx.fillText(u.hp+"%",u.x,u.y-25);
+        if(u.owner==P){
+    if(u.status=="選択中"){
+    ctx.fillStyle="#0000ff";
+        }else if(u.status=="行動終了"){
+    ctx.fillStyle="#cccccc";
+        }else{
+    ctx.fillStyle="#000000";
+        }
+    }else{
+    ctx.fillStyle="#ff0000";
+    }
         if(u.name=="炎のドラゴン" || u.name=="闇のドラゴン" || u.name=="光のドラゴン"){
     ctx.fillText("🐲"+u.str,u.x,u.y+25);
             }else{
             ctx.fillText(u.type+u.str,u.x,u.y+25);
             }
+    if(u.name!="戦士" && u.name!="長槍兵" && u.name!="戦列歩兵" && u.name!="歩兵" && u.name!="自動車化歩兵" && u.name!="榴弾砲" && u.name!="特殊部隊" && u.name!="主力戦車"){
     ctx.stroke();
+        }
         }
     }
     }
@@ -763,6 +1038,71 @@ function translate(){
 translate();
 
 canvas.addEventListener("click",(evt)=>{
+    if(editar===true){
+        for(const t of tiles){
+            if(Math.abs(t.centroid.x-mouse.x)<45 && Math.abs(t.centroid.y-mouse.y)<52 && mapPlanet[P]==t.planet){
+                selectedTile=t.id;
+                if(buildMode==2){
+                    if(buildings.findIndex((e)=>e.assign==selectedTile)!=-1){
+                        let index=buildings.findIndex((e)=>e.assign==selectedTile);
+                        level[buildings[index].owner]++;
+                        buildings[index].level++;
+                        buildings[index].hp=75+25*buildings[index].level;
+                        if(buildings[index].name=="首都"){
+                            if(buildings[index].level==2){
+                        discovery("文字",buildings[index].owner);
+                        discovery("畜産",buildings[index].owner);
+                    }
+                    if(buildings[index].level==3){
+                        discovery("工学",buildings[index].owner);
+                    }
+                    if(buildings[index].level==4){
+                        discovery("蒸気機関",buildings[index].owner);
+                        discovery("化学肥料",buildings[index].owner);
+                    }
+                    if(buildings[index].level==5){
+                        discovery("情報通信",buildings[index].owner);
+                        discovery("プラスチック",buildings[index].owner);
+                    }
+                    if(buildings[index].level==6){
+                        discovery("宇宙旅行",buildings[index].owner);
+                        discovery("ホバリング",buildings[index].owner);
+                        discovery("量子工学",buildings[index].owner);
+                    }
+                        }
+                    }
+                }
+                if(buildMode==3){
+                    if(units.findIndex((e)=>e.assign==selectedTile)!=-1){
+                        if(units.length>1){
+                        deleteObject("units",selectedTile);
+                            }
+                    }else if(buildings.findIndex((e)=>e.assign==selectedTile && e.name!="首都")!=-1){
+                        deleteObject("buildings",selectedTile);
+                    }
+                }
+                if(buildMode==5){
+                    if(buildings.findIndex((e)=>e.assign==selectedTile)==-1){
+                    let index=buildings.findIndex((e)=>e.name=="首都" && e.owner==P);
+                    buildings[index].assign=selectedTile;
+                    buildings[index].x=tiles[selectedTile].centroid.x;
+                    buildings[index].y=tiles[selectedTile].centroid.y;
+                        }
+                }
+                console.log(selectedTile);
+            }
+        }
+        if(mouse.y>canvas.height-100){
+            selectedTile=-1;
+            }
+    }
+    if(editar===true && selectedTile!=-1 && buildMode==4){
+        if(tiles[selectedTile].type=="Water"){
+            tiles[selectedTile].type="Land";
+        }else{
+            tiles[selectedTile].type="Water";
+        }
+    }
     if(displayMode=="宇宙空間"){
         for(const p of planets){
             if(h.collisionRect(p.x-p.radius-50,p.y-p.radius-50,p.radius*2+100,p.radius*2+100,mouse.x,mouse.y)){
@@ -773,6 +1113,9 @@ canvas.addEventListener("click",(evt)=>{
     if(displayMode=="技術ツリー"){
     for(const t of techs){
         if(h.collisionRect(t.x,t.y,150,100,mouse.x,mouse.y) && t.assign==P){
+            if(editar===true){
+                discovered(t.name,t.assign);
+            }else{
             document.querySelector("#description").innerHTML=`${t.description}`;
             if(techs.findIndex((e)=>e.assign==P && e.status2=="選択中")!=-1){
                 techs[techs.findIndex((e)=>e.assign==P && e.status2=="選択中")].status2="待機";
@@ -781,13 +1124,16 @@ canvas.addEventListener("click",(evt)=>{
             t.status2="選択中";
             }
         }
+            }
     }
         }
     for(const b of buttons){
-        if(h.collisionRect(b.x,b.y,b.w,b.h,mouse.x,mouse.y) && b.display==displayMode){
+        if((h.collisionRect(b.x,b.y,b.w,b.h,mouse.x,mouse.y) && b.display==displayMode) || (h.collisionRect(b.x,b.y,b.w,b.h,mouse.x,mouse.y) && editar===true && b.display=="エディタ")){
+            if(b.label!="宇宙空間" || buildings.findIndex((e)=>e.owner==P && e.name=="宇宙基地")!=-1){
             document.querySelector("#description").innerHTML="";
             b.status="選択中";
             b.interval=3;
+                }
         }
     }
     for(const b of buildings){
@@ -1185,9 +1531,24 @@ function nextTurn(){
         popTexts.push({value:`${techs[techs.findIndex((e)=>e.assign==P && e.tag=="event")].name}の研究が完了！`,x:buttons[bi].x+buttons[bi].w/2+100,y:buttons[bi].y-10,interval:0,color:"#000000"});
         techs[techs.findIndex((e)=>e.assign==P && e.tag=="event")].status2="待機";
     }
+    if(hasTech("車輪")){
+        for(const u of units){
+            if(u.owner==P && u.type=="⚒"){
+                u.mp=3;
+            }
+        }
+    }
+    if(hasTech("蒸気機関")){
+        for(const u of units){
+            if(u.owner==P && u.type=="⚒"){
+                u.mp=4;
+            }
+        }
+    }
 }
 
 function construction(name,type,str,status,cultureCost){
+    if(editar===false){
     if(!cultureCost){
         cultureCost=0;
         }
@@ -1209,17 +1570,49 @@ function construction(name,type,str,status,cultureCost){
         }
     }
     }
+    }else{
+        if(buildings.findIndex((elem)=>elem.name=="ピラミッド" && elem.owner==P)!=-1 && name=="農場"){
+                    str++;
+                }
+                if(buildings.findIndex((elem)=>elem.name=="ストーンヘンジ" && elem.owner==P)!=-1 && name=="鉱山"){
+                    str++;
+                }
+                if(buildings.findIndex((elem)=>elem.name=="スマートシティ" && elem.owner==P)!=-1 && (type=="🌾" || type=="📖" || type=="🏭" || type=="⚙")){
+                    str+=6;
+                }
+                buildings.push({name:name,type:type,str:str,hp:100,x:tiles[selectedTile].centroid.x,y:tiles[selectedTile].centroid.y,color:"#000000",status:status,assign:selectedTile,level:1,owner:P,planet:tiles[selectedTile].planet});
+                if(type=="🌾"){
+                foodPt[P]+=str;
+                }else if(type=="⚙"){
+                bRPt[P]+=str;
+                }else if(type=="📖"){
+                culturePt[P]+=str;
+                }else if(type=="🏭"){
+                partsPt[P]+=str;
+                }
+    }
 }
 function train(name,type,str,range,mp,assign,resources,instantOwner,instantHp,planet){
+    if(editar===true){
+        assign=selectedTile;
+    }
     if(!planet){
         planet=mapPlanet[P];
     }
     if(!instantOwner && !instantHp){
-    if(units.findIndex((elem)=>elem.assign==assign)==-1 && resources[0]<=food[P] && resources[1]<=basicResources[P] && resources[2]<=parts[P]){
+    if(units.findIndex((elem)=>elem.assign==assign)==-1 && ((resources[0]<=food[P] && resources[1]<=basicResources[P] && resources[2]<=parts[P]) || (editar===true))){
+        if(editar===false){
         food[P]=food[P]-resources[0];
         basicResources[P]=basicResources[P]-resources[1];
         parts[P]=parts[P]-resources[2];
+            }
         if(type=="⚒"){
+            if(hasTech("車輪")){
+                mp++;
+            }
+            if(hasTech("蒸気機関")){
+                mp++;
+            }
             units.push({name:name,type:type,str:str,hp:0,range:range,move:mp,mp:mp,x:tiles[assign].centroid.x,y:tiles[assign].centroid.y,color:"#000000",status:"待機",assign:assign,owner:P,planet:planet});
             }else{
     units.push({name:name,type:type,str:str,hp:100,range:range,move:mp,mp:mp,x:tiles[assign].centroid.x,y:tiles[assign].centroid.y,color:"#000000",status:"待機",assign:assign,owner:P,planet:planet});
@@ -1229,9 +1622,11 @@ function train(name,type,str,range,mp,assign,resources,instantOwner,instantHp,pl
         if(!instantHp){
             instantHp=100;
             }
+        if(editar===false){
         food[P]=food[P]-resources[0];
         basicResources[P]=basicResources[P]-resources[1];
         parts[P]=parts[P]-resources[2];
+            }
         if(type=="⚒"){
             units.push({name:name,type:type,str:str,hp:0,range:range,move:mp,mp:mp,x:tiles[assign].centroid.x,y:tiles[assign].centroid.y,color:"#000000",status:"待機",assign:assign,owner:instantOwner,planet:planet});
             }else{
@@ -1318,54 +1713,92 @@ canvas.addEventListener("click",(evt)=>{
     for(const b of buildings){
         //if(b.planet==mapPlanet[P]){
     if(buildings.findIndex((e)=>e.assign==u.assign && e.name=="宇宙基地")!=-1 &&Math.abs(u.x-mouse.x)<45 && Math.abs(u.y-mouse.y)<52){
+        let planetLocations="";
+        for(let k=0; k<players[P].discoveredPlanets.length; ++k){
+            planetLocations+=`<option>${players[P].discoveredPlanets[k]}</option>`;
+        }
         document.querySelector("#information").innerHTML="";
         document.querySelector("#information").innerHTML+=`
-        必要[部品500]<input type="button" value="このユニットをランダムな星へ送る" onclick="transport('${u.planet}',${u.assign})" />
+        必要[部品500]<input type="button" value="このユニットをランダムな惑星へ送る" onclick="transport('${u.planet}',${u.assign})" /><br>
+        必要[部品50]<input type="button" value="このユニットを既知の惑星へ送る" onclick="transportLocation(${u.assign},query.value)" /><br>
+        <select id="planetSelect">
+        ${planetLocations}
+        </select>
         `;
-    }else if(u.type=="⚒" && buildings.findIndex((elem)=>elem.assign==u.assign)==-1 && u.status=="選択中" && Math.abs(u.x-mouse.x)<45 && Math.abs(u.y-mouse.y)<52){
+        query=document.querySelector("#planetSelect");
+    }else if((u.type=="⚒" && buildings.findIndex((elem)=>elem.assign==u.assign)==-1 && u.status=="選択中" && Math.abs(u.x-mouse.x)<45 && Math.abs(u.y-mouse.y)<52) || (editar===true && buildMode==1)){
                 document.querySelector("#information").innerHTML=`建築<br>レベルI`;
         if(hasTech("農業")){
                 document.querySelector("#information").innerHTML+=`<input type="button" value="農場" onclick="construction(this.value,'🌾',2,'栽培中')" />`;
             }
                 document.querySelector("#information").innerHTML+=`<input type="button" value="見張台" onclick="construction(this.value,'🛡',3,'稼働中')" />`;
         if(hasTech("冶金")){
-        document.querySelector("#information").innerHTML+=`<input type="button" value="鉱山" onclick="construction(this.value,'⚙',2,'稼働中')" /><br>`;
+        document.querySelector("#information").innerHTML+=`<input type="button" value="鉱山" onclick="construction(this.value,'⚙',2,'稼働中')" />`;
             }
+        document.querySelector("#information").innerHTML+="<br>";
                 if(level[P]>1){
-                    document.querySelector("#information").innerHTML+=`
-        レベルII
-        <input type="button" value="都市" onclick="construction(this.value,'🏠','','待機')" />
-        <input type="button" value="大学" onclick="construction(this.value,'📖',2,'稼働中')" />
-        <input type="button" value="城塞" onclick="construction(this.value,'🛡',12,'稼働中')" /><br>`;
+                    document.querySelector("#information").innerHTML+=`レベルII`;
+        if(hasTech("政府")){
+        document.querySelector("#information").innerHTML+=`<input type="button" value="都市" onclick="construction(this.value,'🏠','','待機')" />`;
             }
+        if(hasTech("哲学")){
+        document.querySelector("#information").innerHTML+=`<input type="button" value="大学" onclick="construction(this.value,'📖',2,'稼働中')" />`;
+            }
+        document.querySelector("#information").innerHTML+=`<input type="button" value="城塞" onclick="construction(this.value,'🛡',12,'稼働中')" />`;
+            }
+        document.querySelector("#information").innerHTML+="<br>";
                 if(level[P]>2){
-                    document.querySelector("#information").innerHTML+=`
-        レベルIII
-        <input type="button" value="神殿" onclick="construction(this.value,'❤',6,'稼働中')" />
-        <input type="button" value="市場" onclick="construction(this.value,'⚖','','稼働中')" />
-        <input type="button" value="演劇場" onclick="construction(this.value,'📖',5,'稼働中')" /><br>`;
+                    document.querySelector("#information").innerHTML+=`レベルIII`;
+        document.querySelector("#information").innerHTML+=`<input type="button" value="神殿" onclick="construction(this.value,'❤',6,'稼働中')" />`;
+                    if(hasTech("経済学")){
+        document.querySelector("#information").innerHTML+=`<input type="button" value="市場" onclick="construction(this.value,'⚖','','稼働中')" />`;
+                        }
+                    if(hasTech("印刷技術")){
+        document.querySelector("#information").innerHTML+=`<input type="button" value="演劇場" onclick="construction(this.value,'📖',5,'稼働中')" />`;
+                        }
+                    document.querySelector("#information").innerHTML+="<br>";
                     }
                 if(level[P]>3){
-                    document.querySelector("#information").innerHTML+=`
-        レベルIV
-        <input type="button" value="穀倉地帯" onclick="construction(this.value,'🌾',8,'栽培中')" />
-        <input type="button" value="工場" onclick="construction(this.value,'⚙',12,'稼働中')" />
-        <input type="button" value="精製プラント" onclick="construction(this.value,'🏭',2,'稼働中')" />
-        <input type="button" value="空港" onclick="construction(this.value,'🛬','','待機')" />
-        <input type="button" value="軍事基地" onclick="construction(this.value,'🛡',36,'稼働中')" /><br>`;
+                    document.querySelector("#information").innerHTML+=`レベルIV`;
+                    if(hasTech("化学肥料")){
+        document.querySelector("#information").innerHTML+=`<input type="button" value="穀倉地帯" onclick="construction(this.value,'🌾',8,'栽培中')" />`;
+        }
+                    if(hasTech("蒸気機関")){
+        document.querySelector("#information").innerHTML+=`<input type="button" value="工場" onclick="construction(this.value,'⚙',12,'稼働中')" />`;
+                        }
+                    if(hasTech("電子工学")){
+        document.querySelector("#information").innerHTML+=`<input type="button" value="精製プラント" onclick="construction(this.value,'🏭',2,'稼働中')" />`;
+                        }
+                    if(hasTech("飛行機")){
+        document.querySelector("#information").innerHTML+=`<input type="button" value="空港" onclick="construction(this.value,'🛬','','待機')" />`;
+                        }
+                    if(hasTech("軍事学")){
+        document.querySelector("#information").innerHTML+=`<input type="button" value="軍事基地" onclick="construction(this.value,'🛡',36,'稼働中')" />`;
+                        }
+                    document.querySelector("#information").innerHTML+="<br>";
                     }
                 if(level[P]>4){
-                    document.querySelector("#information").innerHTML+=`
-        レベルV
-        <input type="button" value="病院" onclick="construction(this.value,'❤',12,'稼働中')" />
-        <input type="button" value="テレビ局" onclick="construction(this.value,'📖',12,'稼働中')" />
-        <input type="button" value="原子力発電所" onclick="construction(this.value,'🏭',14,'稼働中')" />
-        <input type="button" value="ミサイルポッド" onclick="construction(this.value,'🚀','','待機')" /><br>`;
+                    document.querySelector("#information").innerHTML+=`レベルV`;
+                    if(hasTech("プラスチック")){
+        document.querySelector("#information").innerHTML+=`<input type="button" value="病院" onclick="construction(this.value,'❤',12,'稼働中')" />`;
+                        }
+                    if(hasTech("マスメディア")){
+        document.querySelector("#information").innerHTML+=`<input type="button" value="テレビ局" onclick="construction(this.value,'📖',12,'稼働中')" />`;
+                        }
+                    if(hasTech("核分裂反応")){
+        document.querySelector("#information").innerHTML+=`<input type="button" value="原子力発電所" onclick="construction(this.value,'🏭',14,'稼働中')" />`;
+                        }
+                    if(hasTech("液体推進剤")){
+        document.querySelector("#information").innerHTML+=`<input type="button" value="ミサイルポッド" onclick="construction(this.value,'🚀','','待機')" />`;
+                        }
+                    document.querySelector("#information").innerHTML+="<br>";
                     }
                 if(level[P]>5){
-                    document.querySelector("#information").innerHTML+=`
-        レベルVI
-        <input type="button" value="宇宙基地" onclick="construction(this.value,'🛰','','稼働中')" /><br>`;
+                    document.querySelector("#information").innerHTML+=`レベルVI`;
+                    if(hasTech("宇宙旅行")){
+        document.querySelector("#information").innerHTML+=`<input type="button" value="宇宙基地" onclick="construction(this.value,'🛰','','稼働中')" />`;
+                        }
+        document.querySelector("#information").innerHTML+="<br>";
                     }
         if(hasTech("埋葬")){
         if(level[P]==1){
@@ -1385,8 +1818,10 @@ canvas.addEventListener("click",(evt)=>{
             if(buildings.findIndex((elem)=>elem.name=="ドラゴンの巣")==-1 && units.findIndex((elem)=>elem.str=="ドラゴンの巣")==-1){
             document.querySelector("#information").innerHTML+=`コスト[文化25]効果：ドラゴンが生産できるようになる<input type="button" value="ドラゴンの巣" onclick="construction(this.value,'🥚','','稼働中',25)" /><br>`;
                 }
+            if(hasTech("文字")){
             if(buildings.findIndex((elem)=>elem.name=="アレクサンドリア図書館")==-1 && units.findIndex((elem)=>elem.str=="アレクサンドリア図書館")==-1){
             document.querySelector("#information").innerHTML+=`コスト[文化25]効果：文化+8<input type="button" value="アレクサンドリア図書館" onclick="construction(this.value,'📖',8,'稼働中',25)" /><br>`;
+                }
                 }
             if(buildings.findIndex((elem)=>elem.name=="兵馬俑")==-1 && units.findIndex((elem)=>elem.str=="兵馬俑")==-1){
             document.querySelector("#information").innerHTML+=`コスト[文化25]効果：食糧を消費しない特殊な兵士を作れる。<input type="button" value="兵馬俑" onclick="construction(this.value,'','','稼働中',25)" /><br>`;
@@ -1400,8 +1835,10 @@ canvas.addEventListener("click",(evt)=>{
             if(buildings.findIndex((elem)=>elem.name=="システィーナ礼拝堂")==-1 && units.findIndex((elem)=>elem.str=="システィーナ礼拝堂")==-1){
         document.querySelector("#information").innerHTML+=`コスト[文化100]効果：この建物の上で回復+12<input type="button" value="システィーナ礼拝堂" onclick="construction(this.value,'❤',12,'稼働中',100)" /><br>`;
                 }
+            if(hasTech("火薬")){
             if(buildings.findIndex((elem)=>elem.name=="姫路城")==-1 && units.findIndex((elem)=>elem.str=="姫路城")==-1){
         document.querySelector("#information").innerHTML+=`コスト[文化100]効果：この建物の上で戦闘力+24<input type="button" value="姫路城" onclick="construction(this.value,'🛡',24,'稼働中',100)" /><br>`;
+                }
                 }
             if(buildings.findIndex((elem)=>elem.name=="クレムリン")==-1 && units.findIndex((elem)=>elem.str=="クレムリン")==-1){
         document.querySelector("#information").innerHTML+=`コスト[文化100]効果：敵の生産施設を壊す時、生産力の10倍の資源を略奪する。<input type="button" value="クレムリン" onclick="construction(this.value,'⛪️','','稼働中',100)" /><br>`;
@@ -1430,8 +1867,10 @@ canvas.addEventListener("click",(evt)=>{
             if(buildings.findIndex((elem)=>elem.name=="スマートシティ")==-1 && units.findIndex((elem)=>elem.str=="スマートシティ")==-1){
         document.querySelector("#information").innerHTML+=`コスト[文化500]効果：この遺産が建設されてから建てられる全ての建物からの生産が6増加<input type="button" value="スマートシティ" onclick="construction(this.value,'🏠️','','待機',500)" /><br>`;
                 }
+            if(hasTech("人工衛星")){
             if(buildings.findIndex((elem)=>elem.name=="ハッブル宇宙望遠鏡")==-1 && units.findIndex((elem)=>elem.str=="ハッブル宇宙望遠鏡")==-1){
         document.querySelector("#information").innerHTML+=`コスト[文化500]効果：全ての惑星の情報がわかる。<input type="button" value="ハッブル宇宙望遠鏡" onclick="construction(this.value,'🔭','','待機',500)" /><br>`;
+                }
                 }
             /*if(buildings.findIndex((elem)=>elem.name=="ジェームズウェッブ宇宙望遠鏡")==-1 && units.findIndex((elem)=>elem.str=="ジェームズウェッブ宇宙望遠鏡")==-1){
         document.querySelector("#information").innerHTML+=`コスト[文化500]効果：全ての惑星の情報がわかる。<input type="button" value="ジェームズウェッブ宇宙望遠鏡" onclick="construction(this.value,'🔭','','待機',500)" /><br>`;
@@ -1439,12 +1878,12 @@ canvas.addEventListener("click",(evt)=>{
                     }
         if(level[P]>5){
                     document.querySelector("#information").innerHTML+=`遺産<br>`;
-            if(buildings.findIndex((elem)=>elem.name=="火星植民地化")==-1 && units.findIndex((elem)=>elem.str=="火星植民地化")==-1){
+            /*if(buildings.findIndex((elem)=>elem.name=="火星植民地化")==-1 && units.findIndex((elem)=>elem.str=="火星植民地化")==-1){
         document.querySelector("#information").innerHTML+=`コスト[文化1000]効果：科学勝利<input type="button" value="火星植民地化" onclick="construction(this.value,'🌐',プレイヤー'`+P+`の科学勝利！','稼働中',1000)" /><br>`;
-                }
+                }*/
                     }
             }
-                    }else if(u.type=="⚒" && buildings.findIndex((elem)=>elem.assign==u.assign)!=-1 && u.status=="選択中" && Math.abs(u.x-mouse.x)<45 && Math.abs(u.y-mouse.y)<52){
+                    }else if((u.type=="⚒" && buildings.findIndex((elem)=>elem.assign==u.assign)!=-1 && u.status=="選択中" && Math.abs(u.x-mouse.x)<45 && Math.abs(u.y-mouse.y)<52) || (editar===true && buildMode==3)){
                     let display=false;
                     let cost=100;
                     let assignning=buildings.findIndex((elem)=>elem.assign==u.assign);
@@ -1488,7 +1927,7 @@ canvas.addEventListener("click",(evt)=>{
             }
                     }else if(u.status=="選択中" && Math.abs(u.x-mouse.x)<45 && Math.abs(u.y-mouse.y)<52){
         document.querySelector("#information").innerHTML=u.name+"<br>体力"+u.hp+"<br>戦闘力"+u.str+"<br>状態:"+u.status+"<br><br><input type='button' value='解雇' onclick='deleteObject(\"units\","+u.assign+")'>";
-        }else if(b.status=="選択中" && (b.type=="🏘" || b.type=="🏠") && Math.abs(b.x-mouse.x)<45 && Math.abs(b.y-mouse.y)<52){
+        }else if((b.status=="選択中" && (b.type=="🏘" || b.type=="🏠") && Math.abs(b.x-mouse.x)<45 && Math.abs(b.y-mouse.y)<52) || (editar===true && buildMode==0)){
         document.querySelector("#information").innerHTML=`必要[食料8]<input type="button" value="労働者" onclick="train(this.value,'⚒','',1,2,`+b.assign+`,[8,0,0])" /><br>`;
         if(level[P]==1){
         document.querySelector("#information").innerHTML+=`
@@ -1497,50 +1936,80 @@ canvas.addEventListener("click",(evt)=>{
             }else if(level[P]==2){
         document.querySelector("#information").innerHTML+=`
         必要[食料3,物資3]<input type="button" value="槍兵" onclick="train(this.value,'⚔',9,1,2,`+b.assign+`,[3,3,0])" />攻撃力9<br>
-        必要[食料4,物資9]<input type="button" value="重装歩兵" onclick="train(this.value,'⚔',11,1,2,`+b.assign+`,[4,9,0])" />攻撃力11<br>
-        必要[食料10,物資18]<input type="button" value="戦車弓兵" onclick="train(this.value,'🐴🏹',8,2,3,`+b.assign+`,[10,18,0])" />攻撃力8移動力3射程2<br>
-        必要[食料10,物資6]<input type="button" value="騎兵" onclick="train(this.value,'🐴⚔',9,1,3,`+b.assign+`,[10,6,0])" />攻撃力9移動力3<br>
-        必要[食料3,物資7]<input type="button" value="弓兵" onclick="train(this.value,'🏹',8,2,2,`+b.assign+`,[3,7,0])" />攻撃力8射程2<br>`;
+        必要[食料4,物資9]<input type="button" value="重装歩兵" onclick="train(this.value,'⚔',11,1,2,`+b.assign+`,[4,9,0])" />攻撃力11<br>`;
+            if(hasTech("畜産")){
+        document.querySelector("#information").innerHTML+=`必要[食料10,物資18]<input type="button" value="戦車弓兵" onclick="train(this.value,'🐴🏹',8,2,3,`+b.assign+`,[10,18,0])" />攻撃力8移動力3射程2<br>
+        必要[食料10,物資6]<input type="button" value="騎兵" onclick="train(this.value,'🐴⚔',9,1,3,`+b.assign+`,[10,6,0])" />攻撃力9移動力3<br>`;
+            }
+        if(hasTech("算術")){
+        document.querySelector("#information").innerHTML+=`必要[食料3,物資7]<input type="button" value="弓兵" onclick="train(this.value,'🏹',8,2,2,`+b.assign+`,[3,7,0])" />攻撃力8射程2<br>`;
+            }
             }else if(level[P]==3){
         document.querySelector("#information").innerHTML+=`
         必要[食料6,物資7]<input type="button" value="長槍兵" onclick="train(this.value,'⚔',12,1,2,`+b.assign+`,[6,7,0])" />攻撃力12<br>
-        必要[食料8,物資10]<input type="button" value="剣士" onclick="train(this.value,'⚔',18,1,2,`+b.assign+`,[8,10,0])" />攻撃力18<br>
-        必要[食料6,物資8]<input type="button" value="弩兵" onclick="train(this.value,'🏹',17,2,2,`+b.assign+`,[6,8,0])" />攻撃力17射程2<br>
-        必要[食料13,物資14]<input type="button" value="騎士" onclick="train(this.value,'🐴⚔',21,1,3,`+b.assign+`,[13,14,0])" />攻撃力21移動力3<br>
-        必要[食料10,物資12]<input type="button" value="戦列歩兵" onclick="train(this.value,'🔫⚔',24,2,1,`+b.assign+`,[10,8,0])" />攻撃力24射程2移動力1<br>
-        必要[食料7,物資32]<input type="button" value="野戦砲" onclick="train(this.value,'💣',22,3,1,`+b.assign+`,[7,32,0])" />攻撃力22射程3移動力1<br>`;
+        必要[食料8,物資10]<input type="button" value="剣士" onclick="train(this.value,'⚔',18,1,2,`+b.assign+`,[8,10,0])" />攻撃力18<br>`;
+            if(hasTech("工学")){
+        document.querySelector("#information").innerHTML+=`必要[食料6,物資8]<input type="button" value="弩兵" onclick="train(this.value,'🏹',17,2,2,`+b.assign+`,[6,8,0])" />攻撃力17射程2<br>`;
+                }
+        document.querySelector("#information").innerHTML+=`必要[食料13,物資14]<input type="button" value="騎士" onclick="train(this.value,'🐴⚔',21,1,3,`+b.assign+`,[13,14,0])" />攻撃力21移動力3<br>`;
+            if(hasTech("火薬")){
+        document.querySelector("#information").innerHTML+=`必要[食料10,物資12]<input type="button" value="戦列歩兵" onclick="train(this.value,'🔫⚔',24,2,1,`+b.assign+`,[10,8,0])" />攻撃力24射程2移動力1<br>`;
+                if(hasTech("力学")){
+        document.querySelector("#information").innerHTML+=`必要[食料7,物資32]<input type="button" value="野戦砲" onclick="train(this.value,'💣',22,3,1,`+b.assign+`,[7,32,0])" />攻撃力22射程3移動力1<br>`;
+                    }
+            }
             }else if(level[P]==4){
         document.querySelector("#information").innerHTML+=`
-        必要[食料24,物資28]<input type="button" value="歩兵" onclick="train(this.value,'🔫',32,2,2,`+b.assign+`,[24,28,0])" />攻撃力32<br>
-        必要[食料24,物資50,部品2]<input type="button" value="自動車化歩兵" onclick="train(this.value,'🔫🚛',32,1,4,`+b.assign+`,[24,50,2])" />攻撃力32移動力4<br>
-        必要[食料16,物資75,部品10]<input type="button" value="歩兵戦車" onclick="train(this.value,'🚛⚔',50,1,4,`+b.assign+`,[16,75,10])" />攻撃力50移動力4<br>
-        必要[食料16,物資45,部品5]<input type="button" value="砲兵" onclick="train(this.value,'🧨',28,4,2,`+b.assign+`,[16,45,5])" />攻撃力28射程4<br>`;
+        必要[食料24,物資28]<input type="button" value="歩兵" onclick="train(this.value,'🔫',32,2,2,`+b.assign+`,[24,28,0])" />攻撃力32<br>`;
+            if(hasTech("エンジン")){
+        document.querySelector("#information").innerHTML+=`必要[食料24,物資50,部品2]<input type="button" value="自動車化歩兵" onclick="train(this.value,'🔫🚛',32,1,4,`+b.assign+`,[24,50,2])" />攻撃力32移動力4<br>
+        必要[食料16,物資75,部品10]<input type="button" value="歩兵戦車" onclick="train(this.value,'🚛⚔',50,1,4,`+b.assign+`,[16,75,10])" />攻撃力50移動力4<br>`;
+                }
+            if(hasTech("弾道学")){
+        document.querySelector("#information").innerHTML+=`必要[食料16,物資45,部品5]<input type="button" value="榴弾砲" onclick="train(this.value,'🧨',28,4,2,`+b.assign+`,[16,45,5])" />攻撃力28射程4<br>`;
+                }
             }else if(level[P]==5){
         document.querySelector("#information").innerHTML+=`
-        必要[食料32,物資30,部品8]<input type="button" value="機械化歩兵" onclick="train(this.value,'🔫🚗',65,1,4,`+b.assign+`,[32,30,8])" />攻撃力65移動力4<br>
-        必要[食料32,物資45,部品12]<input type="button" value="特殊部隊" onclick="train(this.value,'🔫✩',72,1,2,`+b.assign+`,[32,45,12])" />攻撃力72<br>
-        必要[食料24,物資90,部品25]<input type="button" value="主力戦車" onclick="train(this.value,'🚗⚔',95,1,5,`+b.assign+`,[24,90,25])" />攻撃力95移動力5<br>
-        必要[食料24,物資80,部品20]<input type="button" value="地対空ミサイルランチャー" onclick="train(this.value,'🚗🚀',100,5,4,`+b.assign+`,[24,80,20])" />攻撃力100射程5移動力4飛行機を迎撃できる<br>
-        必要[物資15,部品35]<input type="button" value="戦闘用ドローン" onclick="train(this.value,'🛩⚔',55,4,2,`+b.assign+`,[0,15,35])" />攻撃力55射程4<br>`;
+        必要[食料32,物資30,部品8]<input type="button" value="機械化歩兵" onclick="train(this.value,'🔫🚗',65,1,4,`+b.assign+`,[32,30,8])" />攻撃力65移動力4<br>`;
+            if(hasTech("プラスチック")){
+        document.querySelector("#information").innerHTML+=`必要[食料32,物資45,部品12]<input type="button" value="特殊部隊" onclick="train(this.value,'🔫✩',72,1,2,`+b.assign+`,[32,45,12])" />攻撃力72<br>`;
+            }
+        document.querySelector("#information").innerHTML+=`必要[食料24,物資90,部品25]<input type="button" value="主力戦車" onclick="train(this.value,'🚗⚔',95,1,5,`+b.assign+`,[24,90,25])" />攻撃力95移動力5<br>`;
+            if(hasTech("液体推進剤")){
+        document.querySelector("#information").innerHTML+=`必要[食料24,物資80,部品20]<input type="button" value="地対空ミサイルランチャー" onclick="train(this.value,'🚗🚀',100,5,4,`+b.assign+`,[24,80,20])" />攻撃力100射程5移動力4飛行機を迎撃できる<br>`;
+                }
+            if(hasTech("戦闘用ドローン")){
+        document.querySelector("#information").innerHTML+=`必要[物資15,部品35]<input type="button" value="戦闘用ドローン" onclick="train(this.value,'🛩⚔',55,4,2,`+b.assign+`,[0,15,35])" />攻撃力55射程4<br>`;
+            }
             }else if(level[P]>=6){
         document.querySelector("#information").innerHTML+=`
-        必要[物資20,部品45]<input type="button" value="戦闘用アンドロイド" onclick="train(this.value,'🔫🤖',150,1,5,`+b.assign+`,[0,20,45])" />攻撃力150移動力5<br>
-        必要[食料30,物資100,部品45]<input type="button" value="ホバー戦車" onclick="train(this.value,'🚗🛰',225,1,6,`+b.assign+`,[30,100,30])" />攻撃力225移動力6<br>
-        必要[食料30,物資95,部品160]<input type="button" value="レーザーキャノン" onclick="train(this.value,'☄',325,6,3,`+b.assign+`,[30,95,160])" />攻撃力325射程6移動力3<br>`;
+        必要[物資20,部品45]<input type="button" value="戦闘用アンドロイド" onclick="train(this.value,'🔫🤖',150,1,5,`+b.assign+`,[0,20,45])" />攻撃力150移動力5<br>`;
+            if(hasTech("ホバリング")){
+        document.querySelector("#information").innerHTML+=`必要[食料30,物資100,部品45]<input type="button" value="ホバー戦車" onclick="train(this.value,'🚗🛰',225,1,6,`+b.assign+`,[30,100,30])" />攻撃力225移動力6<br>`;
+                }
+            if(hasTech("量子工学")){
+        document.querySelector("#information").innerHTML+=`必要[食料30,物資95,部品160]<input type="button" value="レーザーキャノン" onclick="train(this.value,'☄',325,6,3,`+b.assign+`,[30,95,160])" />攻撃力325射程6移動力3<br>`;
+                }
             }
         }else if(b.status=="選択中" && (b.type=="🛬") && Math.abs(b.x-mouse.x)<45 && Math.abs(b.y-mouse.y)<52){
         document.querySelector("#information").innerHTML="";
         if(level[P]==4){
         document.querySelector("#information").innerHTML+=`
-        必要[物資35,部品2]<input type="button" value="三葉戦闘機" onclick="train(this.value,'🛩',24,6,4,`+b.assign+`,[0,35,2])" />攻撃力24射程6<br>
-        必要[物資50,部品5]<input type="button" value="戦闘機" onclick="train(this.value,'🛩',32,7,5,`+b.assign+`,[0,50,5])" />攻撃力32射程7<br>
-        必要[物資65,部品5]<input type="button" value="爆撃機" onclick="train(this.value,'🛩',36,8,6,`+b.assign+`,[0,65,5])" />攻撃力36射程8<br>
+        必要[物資35,部品2]<input type="button" value="三葉戦闘機" onclick="train(this.value,'🛩',24,6,4,`+b.assign+`,[0,35,2])" />攻撃力24射程6<br>`;
+            if(hasTech("レーダー")){
+        document.querySelector("#information").innerHTML+=`必要[物資50,部品5]<input type="button" value="戦闘機" onclick="train(this.value,'🛩',37,7,5,`+b.assign+`,[0,50,5])" />攻撃力37射程7<br>`;
+                }
+            if(hasTech("ダイナマイト")){
+        document.querySelector("#information").innerHTML+=`必要[物資65,部品5]<input type="button" value="爆撃機" onclick="train(this.value,'🛩',36,8,6,`+b.assign+`,[0,65,5])" />攻撃力36射程8<br>
         必要[物資80,部品25]<input type="button" value="戦略爆撃機" onclick="train(this.value,'🛩',50,9,6,`+b.assign+`,[0,80,25])" />攻撃力50射程9<br>`;
+                }
             }
         if(level[P]==5){
+            if(hasTech("情報通信")){
         document.querySelector("#information").innerHTML+=`
-        必要[物資50,部品24]<input type="button" value="攻撃ヘリ" onclick="train(this.value,'🛩',65,10,5,`+b.assign+`,[0,50,24])" />攻撃力65射程10<br>
-        必要[物資75,部品32]<input type="button" value="ジェット戦闘機" onclick="train(this.value,'✈',80,12,7,`+b.assign+`,[0,75,32])" />攻撃力80射程12<br>`;
+        必要[物資30,部品24]<input type="button" value="攻撃ヘリ" onclick="train(this.value,'🛩',65,10,5,`+b.assign+`,[0,30,24])" />攻撃力65射程10<br>`;
+                }
+        document.querySelector("#information").innerHTML+=`必要[物資75,部品32]<input type="button" value="ジェット戦闘機" onclick="train(this.value,'✈',80,12,7,`+b.assign+`,[0,75,32])" />攻撃力80射程12<br>`;
             }
         if(level[P]>5){
         document.querySelector("#information").innerHTML+=`
@@ -1551,9 +2020,11 @@ canvas.addEventListener("click",(evt)=>{
         if(level[P]==5){
         document.querySelector("#information").innerHTML+=`
         必要[部品35]<input type="button" value="巡航ミサイル" onclick="train(this.value,'🚀',150,12,8,`+b.assign+`,[0,0,35])" />攻撃力150射程12<br>
-        必要[部品70]<input type="button" value="大陸間弾道ミサイル" onclick="train(this.value,'🚀',160,24,8,`+b.assign+`,[0,0,70])" />攻撃力160射程24<br>
-        必要[部品200]<input type="button" value="核弾頭搭載ICBM" onclick="train(this.value,'🚀',300,24,8,`+b.assign+`,[0,0,200])" />攻撃力300射程24<br>
+        必要[部品70]<input type="button" value="大陸間弾道ミサイル" onclick="train(this.value,'🚀',160,24,8,`+b.assign+`,[0,0,70])" />攻撃力160射程24<br>`;
+            if(hasTech("核分裂反応")){
+        document.querySelector("#information").innerHTML+=`必要[部品200]<input type="button" value="核弾頭搭載ICBM" onclick="train(this.value,'🚀',300,24,8,`+b.assign+`,[0,0,200])" />攻撃力300射程24<br>
         必要[部品300]<input type="button" value="核融合弾頭搭載ICBM" onclick="train(this.value,'🚀',500,24,8,`+b.assign+`,[0,0,300])" />攻撃力500射程24<br>`;
+                }
             }
         if(level[P]>5){
         document.querySelector("#information").innerHTML+=`
@@ -1568,9 +2039,9 @@ canvas.addEventListener("click",(evt)=>{
         }
         document.querySelector("#information").innerHTML="";
         document.querySelector("#information").innerHTML+=`
-        犠牲[1つ分の食糧の生産]<input type="button" value="食糧+${amount}" onclick="trade("foodPt","food",${b.owner},${amount})" /><br>
-        犠牲[1つ分の物資の生産]<input type="button" value="物資+${amount}" onclick="trade("bRPt","basicResources",${b.owner},${amount})" /><br>
-        犠牲[1つ分の部品の生産]<input type="button" value="部品+${amount}" onclick="trade("partsPt","parts",${b.owner},${amount})" />
+        犠牲[1つ分の食糧の生産]<input type="button" value="食糧+${amount}" onclick="trade('foodPt','food',${b.owner},${amount})" /><br>
+        犠牲[1つ分の物資の生産]<input type="button" value="物資+${amount}" onclick="trade('bRPt','basicResources',${b.owner},${amount})" /><br>
+        犠牲[1つ分の部品の生産]<input type="button" value="部品+${amount}" onclick="trade('partsPt','parts',${b.owner},${amount})" />
         `;
         }else if(b.status=="選択中" && (b.type=="🥚") && Math.abs(b.x-mouse.x)<45 && Math.abs(b.y-mouse.y)<52){
         document.querySelector("#information").innerHTML="";
@@ -1610,8 +2081,74 @@ function cheat12(lv){
     food=[1000,1000];
     basicResources=[1000,1000];
     culture=[1000,1000];
-    level=[lv,lv];
     parts=[1000,1000];
+    startLevel(lv);
+}
+function startLevel(lv){
+    level=[lv,lv];
+    for(const b of buildings){
+        b.level=lv;
+    }
+    for(let k=0; k<players.length;++k){
+    if(lv>1){
+        discovered("狩り",k);
+        discovered("火おこし",k);
+        discovered("埋葬",k);
+        discovered("農業",k);
+        discovered("冶金",k);
+        discovery("文字",k);
+        discovery("畜産",k);
+    }
+    if(lv>2){
+        discovered("文字",k);
+        discovered("畜産",k);
+        discovered("車輪",k);
+        discovered("哲学",k);
+        discovered("算術",k);
+        discovered("政府",k);
+        discovery("工学",k);
+    }
+    if(lv>3){
+        discovered("工学",k);
+        discovered("火薬",k);
+        discovered("印刷技術",k);
+        discovered("経済学",k);
+        discovered("力学",k);
+        discovery("蒸気機関",k);
+        discovery("化学肥料",k);
+    }
+    if(lv>4){
+        discovered("蒸気機関",k);
+        discovered("電子工学",k);
+        discovered("化学肥料",k);
+        discovered("エンジン",k);
+        discovered("軍事学",k);
+        discovered("ダイナマイト",k);
+        discovered("飛行機",k);
+        discovered("レーダー",k);
+        discovered("弾道学",k);
+        discovery("情報通信",k);
+        discovery("プラスチック",k);
+    }
+    if(lv>5){
+        discovered("情報通信",k);
+        discovered("マスメディア",k);
+        discovered("プラスチック",k);
+        discovered("ロボティクス",k);
+        discovered("液体推進剤",k);
+        discovered("人工衛星",k);
+        discovered("核分裂反応",k);
+        discovery("宇宙旅行",k);
+        discovery("ホバリング",k);
+        discovery("量子工学",k);
+    }
+    if(lv>6){
+        discovered("宇宙旅行",k);
+        discovered("ホバリング",k);
+        discovered("量子工学",k);
+        discovered("シンギュラリティ",k);
+    }
+    }
 }
 var connection="";
 function websocketConnection(url){
@@ -1634,13 +2171,6 @@ connection.addEventListener("message", (event) => {
         }
     });
 }
-document.addEventListener('DOMContentLoaded',function(e){
-            document.getElementById('next').addEventListener('click',function(e){
-                if(connection!=""){
-                connection.send('ターン'+Math.floor((turn+1)/2)+"プレイヤー"+P);
-                    }
-    });
-});
 function sendChatmsg(){
     connection.send("送信:"+playerName.value+":"+chatmsg.value);
     chatmsg.value="";
@@ -1685,13 +2215,200 @@ function makeTile(planet){
         }
     }
 }
-function transport(planet,assign){
-    let index=units.findIndex((e)=>e.planet==planet && e.assign==assign);
+function transport(planet,a){
+    if(parts[P]>=500){
+    let index=units.findIndex((e)=>e.planet==planet && e.assign==a);
     let arrival="";
     while(arrival=="" || planets[arrival].name==planet){
         arrival=Math.round(Math.random()*(planets.length-1));
     }
     let min=tiles.findIndex((e)=>e.planet==planets[arrival].name)+1;
+    let assign=-1;
+    let loop=0;
+    while(assign==-1 || buildings.findIndex((e)=>e.assign==assign && e.owner!=P)!=-1 || units.findIndex((e)=>e.assign==assign)!=-1 || tiles[assign].type=="Water"){
+        loop++;
+        assign=Math.round(Math.random()*planets[arrival].tiles+min);
+        if(loop>5000){
+            return;
+        }
+    }
     units[index].planet=planets[arrival].name;
-    units[index].assign=Math.round(Math.random(planets[arrival].tiles)*+min);
+    units[index].assign=assign;
+    units[index].x=tiles[units[index].assign].centroid.x;
+    units[index].y=tiles[units[index].assign].centroid.y;
+        parts[P]-=500;
+        if(players[P].discoveredPlanets.indexOf(planets[arrival].name)==-1){
+            players[P].discoveredPlanets.push(planets[arrival].name);
+        }
+    }
+}
+function transportLocation(a,arrival){
+    if(parts[P]>=50){
+    arrival=planets.findIndex((e)=>e.name==arrival);
+    let index=units.findIndex((e)=>e.assign==a);
+    if(arrival==units[index].planet){
+        return;
+    }
+    let min=tiles.findIndex((e)=>e.planet==planets[arrival].name)+1;
+    let assign=-1;
+    let loop=0;
+    while(assign==-1 || buildings.findIndex((e)=>e.assign==assign && e.owner!=P)!=-1 || units.findIndex((e)=>e.assign==assign)!=-1 || tiles[assign].type=="Water"){
+        loop++;
+        assign=Math.round(Math.random()*planets[arrival].tiles+min);
+        if(loop>5000){
+            return;
+        }
+    }
+    units[index].planet=planets[arrival].name;
+    units[index].assign=assign;
+    units[index].x=tiles[units[index].assign].centroid.x;
+    units[index].y=tiles[units[index].assign].centroid.y;
+        parts[P]-=50;
+    }
+}
+function stringTiles(){
+    let res="[";
+    for(let k=0; k<tiles.length; ++k){
+        res+=`{id:${tiles[k].id},hexX:${tiles[k].hexX},hexY:${tiles[k].hexY},planet:"${tiles[k].planet}",status:"${tiles[k].status}",type:"${tiles[k].type}",centroid:{x:${tiles[k].centroid.x},y:${tiles[k].centroid.y}}}`;
+        if(k+1<tiles.length){
+            res+=",";
+        }
+    }
+    res+="]";
+    return res;
+}
+function stringBuildings(){
+    let res="[";
+    for(let k=0; k<buildings.length; ++k){
+        if(Number.isInteger(buildings[k].str)){
+        res+=`{name:"${buildings[k].name}",type:"${buildings[k].type}",color:"${buildings[k].color}",hp:${buildings[k].hp},owner:${buildings[k].owner},str:${buildings[k].str},assign:${buildings[k].assign},x:${buildings[k].x},y:${buildings[k].y},planet:"${buildings[k].planet}",status:"${buildings[k].status}",level:${buildings[k].level}}`;
+            }else{
+            res+=`{name:"${buildings[k].name}",type:"${buildings[k].type}",color:"${buildings[k].color}",hp:${buildings[k].hp},owner:${buildings[k].owner},str:"${buildings[k].str}",assign:${buildings[k].assign},x:${buildings[k].x},y:${buildings[k].y},planet:"${buildings[k].planet}",status:"${buildings[k].status}",level:${buildings[k].level}}`;
+            }
+        if(k+1<buildings.length){
+            res+=",";
+        }
+    }
+    res+="]";
+    return res;
+}
+function stringUnits(){
+    let res="[";
+    for(let k=0; k<units.length; ++k){
+        if(units[k].name=="労働者"){
+        res+=`{name:"${units[k].name}",type:"${units[k].type}",color:"${units[k].color}",hp:0,owner:${units[k].owner},str:"${units[k].str}",assign:${units[k].assign},x:${units[k].x},y:${units[k].y},planet:"${units[k].planet}",status:"${units[k].status}",mp:${units[k].mp},move:${units[k].move},range:${units[k].range}}`;
+            }else{
+            res+=`{name:"${units[k].name}",type:"${units[k].type}",color:"${units[k].color}",hp:${units[k].hp},owner:${units[k].owner},str:${units[k].str},assign:${units[k].assign},x:${units[k].x},y:${units[k].y},planet:"${units[k].planet}",status:"${units[k].status}",mp:${units[k].mp},move:${units[k].move},range:${units[k].range}}`;
+            }
+        if(k+1<units.length){
+            res+=",";
+        }
+    }
+    res+="]";
+    return res;
+}
+function stringTechs(){
+    let res="[";
+    for(let k=0; k<techs.length; ++k){
+        res+=`{name:"${techs[k].name}",description:"${techs[k].description}",progress:${techs[k].progress},assign:${techs[k].assign},require:${techs[k].require},status2:"${techs[k].status2}",x:${techs[k].x},y:${techs[k].y},status:"${techs[k].status}"}`;
+        if(k+1<techs.length){
+            res+=",";
+        }
+    }
+    res+="]";
+    return res;
+}
+function stringPlanets(){
+    let res="[";
+    for(let k=0; k<planets.length; ++k){
+res+=`{name:"${planets[k].name}",atm:${planets[k].atm},bio:${planets[k].bio},radius:${planets[k].radius},id:${planets[k].id},tiles:${planets[k].tiles},water:${planets[k].water},size:[${planets[k].size[0]},${planets[k].size[1]}],x:${planets[k].x},y:${planets[k].y},status:"${planets[k].status}"}`;
+        if(k+1<planets.length){
+            res+=",";
+        }
+    }
+    res+="]";
+    return res;
+}
+function stringStats(){
+    let res="[";
+    for(let k=0; k<players.length; ++k){
+        res+=`${food[k]},${basicResources[k]},${parts[k]},${culture[k]},${foodPt[k]},${bRPt[k]},${partsPt[k]},${culturePt[k]},${level[k]}`
+        if(k+1<players.length){
+        res+=",";
+        }
+    }
+    res+="]";
+    return res;
+}
+
+function save(){
+    let string="";
+    string+=stringTiles();
+    string+="_1_";
+    string+=stringBuildings();
+    string+="_2_";
+    string+=stringUnits();
+    string+="_3_";
+    string+=stringTechs();
+    string+="_4_";
+    string+=stringPlanets();
+    string+="_5_";
+    string+=`プレイヤー${P}`;
+    string+="_6_";
+    string+=`ターン${turn}`;
+    string+="_7_";
+    string+=stringStats();
+    string+="_8_";
+    string+=`セーブタイトル"${document.querySelector("#saveName").value}"`;
+    string+="_9_";
+    navigator.clipboard.writeText(string).then(()=>{
+        console.log("コピー成功");
+    },()=>{
+      console.log("コピー失敗");
+        alert("セーブ失敗");
+      });
+}
+function load(data){
+    newGame=false;
+    tiles=eval(data.substring(0,data.indexOf("_1_")));
+    buildings=eval(data.substring(data.indexOf("_1_")+3,data.indexOf("_2_")));
+    units=eval(data.substring(data.indexOf("_2_")+3,data.indexOf("_3_")));
+    techs=eval(data.substring(data.indexOf("_3_")+3,data.indexOf("_4_")));
+    planets=eval(data.substring(data.indexOf("_4_")+3,data.indexOf("_5_")));
+    P=eval(data.substring(data.indexOf("_5_")+8,data.indexOf("_6_")));
+    turn=eval(data.substring(data.indexOf("_6_")+6,data.indexOf("_7_")));
+    let stats=eval(data.substring(data.indexOf("_7_")+3,data.indexOf("_8_")));
+    for(let k=0; k<players.length; ++k){
+        food[k]=stats[9*k];
+        basicResources[k]=stats[1+9*k];
+        parts[k]=stats[2+9*k];
+        culture[k]=stats[3+9*k];
+        foodPt[k]=stats[4+9*k];
+        bRPt[k]=stats[5+9*k];
+        partsPt[k]=stats[6+9*k];
+        culturePt[k]=stats[7+9*k];
+        level[k]=stats[8+9*k];
+    }
+    worldName=eval(data.substring(data.indexOf("_8_")+10,data.indexOf("_9_")));
+    /*let index=buttons.findIndex((e)=>e.label=="ゲーム開始！");
+    buttons[index].status="選択中";
+    buttons[index].interval=3;*/
+}
+function mapEditar(){
+    if(editar===true){
+        editar=false;
+    }else{
+        editar=true;
+    }
+}
+function localGameCheckbox(){
+    if(localGame===true){
+        localGame=false;
+        document.querySelector(".local").innerHTML=``;
+    }else{
+        localGame=true;
+        document.querySelector(".local").innerHTML=`
+        <input type="text" id="playerName"><br>
+        <input type="text" id="serverUrl" value="" /><input type="button" value="接続" onclick="websocketConnection(document.getElementById('serverUrl').value)" id="webs" />`;
+    }
 }
