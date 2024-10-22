@@ -225,7 +225,7 @@
             <hr>
             セーブデータを読み込む<br><br>
             ここにペースト<br><textarea id="dataSet"></textarea><br>
-            <input type="button" value="ロード" onclick="load(dataSet.value)" />
+            <input type="button" value="ロード" id="send" onclick="load(dataSet.value)" />
             <hr>
             マップエディタ<input type="checkbox" onclick="mapEditar()" />
             ローカルゲーム<input type="checkbox" onclick="localGameCheckbox()" />
@@ -235,9 +235,15 @@
         <hr>
         <div class="local">
         </div>
+        <label id="diplomacy">
+        </label>
+        <t id="diplomacyButtons"></t>
         <hr>
         セーブデータの名前<input type="text" id="saveName" /><br>
         <input type="button" value="セーブ" onclick="save()" />
+        <hr>
+        歴史<br>
+        <label id="history"></label>
         <script type="text/javascript" src="lib/hachchchctx.lib.js"></script>
         <script type="text/javascript" src="main.js"></script>
     </body>
