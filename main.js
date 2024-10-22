@@ -2,6 +2,7 @@ const h=new hachchchctx();
 var editar=false;
 var buildMode=4;
 var newGame=true;
+var spaceAge=false;
 var selectedPlayers="";
 var diplomacyButtons=document.getElementById("diplomacyButtons");
 const history=document.getElementById("history");
@@ -747,7 +748,7 @@ function translate(){
                 }
             }
         if(displayMode==b.display){
-        if(b.label!="宇宙空間" || buildings.findIndex((e)=>e.owner==P && e.name=="宇宙基地")!=-1){
+        if(b.label!="宇宙空間" || buildings.findIndex((e)=>e.owner==P && e.name=="宇宙基地")!=-1 || buildings.findIndex((elem)=>elem.name=="ハッブル宇宙望遠鏡" && elem.owner==P)!=-1){
         ctx.fillStyle="#ffffff";
         ctx.fillRect(b.x,b.y,b.w,b.h);
         if(b.status=="待機"){
@@ -1145,12 +1146,14 @@ units.length=units.copyWithin(index,index+1).length-1;
     for(const p of planets){
         ctx.beginPath();
         ctx.fillStyle="#ffffff";
+        if(players[P].discoveredPlanets.indexOf(p.name)!=-1){
         ctx.arc(p.x,p.y,p.radius,0,Math.PI*2);
         ctx.fill();
         if(p.name==mapPlanet[P]){
         ctx.fillText("現在地:"+p.name,p.x+p.radius/2,p.y+p.radius+10);
             }else{
         ctx.fillText(p.name,p.x+p.radius/2,p.y+p.radius+10);
+            }
             }
         ctx.closePath();
     }
@@ -1249,9 +1252,11 @@ canvas.addEventListener("click",(evt)=>{
     }
     if(displayMode=="宇宙空間"){
         for(const p of planets){
+            if(players[P].discoveredPlanets.indexOf(p.name)!=-1){
             if(h.collisionRect(p.x-p.radius-50,p.y-p.radius-50,p.radius*2+100,p.radius*2+100,mouse.x,mouse.y)){
                 mapPlanet[P]=p.name;
             }
+                }
         }
     }
     if(displayMode=="技術ツリー"){
@@ -1273,7 +1278,7 @@ canvas.addEventListener("click",(evt)=>{
         }
     for(const b of buttons){
         if((h.collisionRect(b.x,b.y,b.w,b.h,mouse.x,mouse.y) && b.display==displayMode) || (h.collisionRect(b.x,b.y,b.w,b.h,mouse.x,mouse.y) && editar===true && b.display=="エディタ")){
-            if(b.label!="宇宙空間" || buildings.findIndex((e)=>e.owner==P && e.name=="宇宙基地")!=-1){
+            if(b.label!="宇宙空間" || buildings.findIndex((e)=>e.owner==P && e.name=="宇宙基地")!=-1 || buildings.findIndex((elem)=>elem.name=="ハッブル宇宙望遠鏡" && elem.owner==P)!=-1){
             document.querySelector("#description").innerHTML="";
             b.status="選択中";
             b.interval=3;
@@ -1619,6 +1624,14 @@ function nextTurn(){
                 }
                 if(u.b[0]=="ピラミッド"){
                     writeHistory(`ピラミッドが完成した。`);
+                }
+                if(u.b[0]=="ハッブル宇宙望遠鏡"){
+                    for(let k=0; k<planets.length; ++k){
+                        if(players[u.b[4]].discoveredPlanets.indexOf(planets[k].name)==-1){
+                            players[u.b[4]].discoveredPlanets.push(planets[k].name);
+                        }
+                    }
+                    writeHistory(`ハッブル宇宙望遠鏡が完成した。`);
                 }
                 u.hp=0;
                 u.str="";
@@ -2424,6 +2437,12 @@ function makeTile(planet){
     }
 }
 function transport(planet,a){
+    if(spaceAge===false){
+    writeHistory(`人類は初めて外惑星への有人飛行に成功した！${players[P].name}の国は科学の集大成とも言える偉業を成し遂げたのである。<br>この宇宙に資源は無尽蔵にある。この狭い星の限られた資源に縛られないよう、宇宙の植民地化に専念しよう！`);
+    spaceAge=true;
+    }
+    let basement=buildings.findIndex((e)=>e.assign==a);
+    buildings[basement].delay=1;
     if(parts[P]>=500){
     let index=units.findIndex((e)=>e.planet==planet && e.assign==a);
     let arrival="";
@@ -2447,10 +2466,13 @@ function transport(planet,a){
         parts[P]-=500;
         if(players[P].discoveredPlanets.indexOf(planets[arrival].name)==-1){
             players[P].discoveredPlanets.push(planets[arrival].name);
+            writeHistory(`${players[P].name}が初めて${planets[arrival].name}に到達！着陸点${units[index].assign.toString(16)}`);
         }
     }
 }
 function transportLocation(a,arrival){
+    let basement=buildings.findIndex((e)=>e.assign==a);
+    buildings[basement].delay=1;
     if(parts[P]>=50){
     arrival=planets.findIndex((e)=>e.name==arrival);
     let index=units.findIndex((e)=>e.assign==a);
