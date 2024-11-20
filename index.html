@@ -89,7 +89,34 @@
             <source src="./Sounds/回復魔法1.mp3" type="audio/mp3">
             効果音非対応
         </audio>
+        <audio id="musketFire" preload="auto">
+            <source src="./Sounds/musket fire.mp3" type="audio/mp3">
+            効果音非対応
+        </audio>
+        <audio id="rifleFire2" preload="auto">
+            <source src="./Sounds/rifle fire.mp3" type="audio/mp3">
+            効果音非対応
+        </audio>
+        <audio id="gatlingFire" preload="auto">
+            <source src="./Sounds/machineGun.mp3" type="audio/mp3">
+            効果音非対応
+        </audio>
         <script type="text/javascript">
+        function gatlingFire() {
+                document.getElementById('gatlingFire').pause();
+                document.getElementById('gatlingFire').currentTime = 0;
+                document.getElementById("gatlingFire").play();
+            }
+            function musketFire() {
+                document.getElementById('musketFire').pause();
+                document.getElementById('musketFire').currentTime = 0;
+                document.getElementById("musketFire").play();
+            }
+            function rifleFire2() {
+                document.getElementById('rifleFire2').pause();
+                document.getElementById('rifleFire2').currentTime = 0;
+                document.getElementById("rifleFire2").play();
+            }
         function fanfTrigger() {
                 document.getElementById('LevelUp').pause();
                 document.getElementById('LevelUp').currentTime = 0;
@@ -244,6 +271,8 @@
         <hr>
         歴史<br>
         <label id="history"></label>
+        州<br>
+        <label id="states"></label>
         <script type="text/javascript" src="lib/hachchchctx.lib.js"></script>
         <script type="text/javascript" src="main.js"></script>
     </body>
